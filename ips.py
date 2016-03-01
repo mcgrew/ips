@@ -7,24 +7,57 @@ def create_ips(file1_data, file2_data):
   pass
 
 def apply_ips(file_data, patch_data):
-  file_ptr = 0
-  patch_ptr = 5
-  file_size = len(file_data)
-  file_data = bytearray(file_data)
-  # read and apply the patches
-  while (patch_ptr < len(patch_data)):
-    record_meta = struct.unpack(">BHH", patch_data, patch_ptr)
-    patch_ptr += 5
-    record_addr = record_meta[0] << 16 | record_meta[1]
-    record_size = record_meta[2]
-    record_data = struct.unpack(">" + "B" * record_size, patch_data, patch_ptr)
-    patch_ptr += record_size
-    file_data[record_addr:record_addr+record_size] = record_data
-  # file size should not have changed
-  if not file_size == len(file_data):
-    pass #throw some kind of error or warning here
-  return file_data
+  patch = Patch(patch_data)
+  return patch.apply(file_data)
 
+class Patch:
+  records = [] 
+  def __init__(self, ips_data=None):
+    if data and data[:5] == 'PATCH':
+      ips_ptr = 5
+      file_size = len(file_data)
+      # read and apply the patches
+      while (ips_ptr < len(ips_data)):
+        record_meta = struct.unpack(">BHH", ips_data, ips_ptr)
+        ips_ptr += 5
+        record_addr = record_meta[0] << 16 | record_meta[1]
+        record_size = record_meta[2]
+        if record_size:
+          record_data = struct.unpack("B" * record_size, ips_data, ips_ptr)
+          ips_ptr += record_size
+        else: #run length encoded
+          record_size = struct.unpack("B", ips_data, ips_ptr)
+          ips_ptr += 2
+          record_data = struct.unpack("B", ips_data, ips_ptr) * record_size
+          ips_ptr += 1
+        records.push(Record(record_addr, record_data))
+    
+    def apply(self, orig_data):
+      orig_data = bytearray(file_data)
+      for record in records:
+        orig_data[record.address:record.address+record.size()] = record.data
+      return orig_data
+
+    @staticmethod
+    def create(orig_data, patched_data):
+      pass
+
+class Record:
+  def __init__(self, address, data=None):
+    self.address = address 
+    self.data = data
+
+  def set_addr(self, addr):
+    self.address = addr
+
+  def set_data(self, data):
+    self.data = data
+
+  def size(self):
+    if self.data:
+      return len(self.data)
+    else:
+      return 0
 
 def main():
   parser = argparse.ArgumentParser(prog="ips",
