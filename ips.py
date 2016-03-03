@@ -13,24 +13,27 @@ def apply_ips(file_content, patch_content):
 class Patch:
   records = [] 
   def __init__(self, ips_content=None):
-    if ips_content and ips_content[:5] == 'PATCH':
-      ips_ptr = 5
-      file_size = len(file_content)
-      # read and apply the patches
+    if ips_content and ips_content[:5] == b'PATCH':
+      # trim 'PATCH' from the beginning and 'EOL' from the end.
+      ips_ptr = 0
+      ips_content = ips_content[5:-3]
+      # parse the patches
       while (ips_ptr < len(ips_content)):
-        record_meta = struct.unpack(">BHH", ips_content, ips_ptr)
+        record_meta = struct.unpack_from(">BHH", ips_content, ips_ptr)
         ips_ptr += 5
         record_addr = record_meta[0] << 16 | record_meta[1]
         record_size = record_meta[2]
         if record_size:
-          record_content = struct.unpack("B" * record_size, ips_content, ips_ptr)
+          record_content = struct.unpack_from("B" * record_size, ips_content, 
+              ips_ptr)
           ips_ptr += record_size
         else: #run length encoded
-          record_size = struct.unpack("B", ips_content, ips_ptr)
+          record_size = struct.unpack_from("B", ips_content, ips_ptr)
           ips_ptr += 2
-          record_content = struct.unpack("B", ips_content, ips_ptr) * record_size
+          record_content = struct.unpack_from("B", ips_content, ips_ptr) \
+              * record_size
           ips_ptr += 1
-        records.append(Record(record_addr, record_content))
+        self.records.append(Record(record_addr, record_content))
     
   def apply(self, orig_content):
     orig_content = bytearray(orig_content)
