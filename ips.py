@@ -51,19 +51,20 @@ class Patch:
   @staticmethod
   def create(orig_content, patched_content):
     p = Patch()
-    if not len(orig_content) == len(patched_content):
-      raise ValueError("File sizes do not match.")
-    diff_addr = -1
-    last_diff = -1
-    for i in range(len(orig_content)):
-      if not orig_content[i] == patched_content[i]:
-        if diff_addr < 0:
-          diff_addr = i
-        last_diff = i
-      if last_diff >= 0 and i - last_diff >= 5:
-        p.add_record(diff_addr, patched_content[diff_addr:last_diff+1])
-        diff_addr = -1
-        last_diff = -1
+    if not len(orig_content) <= len(patched_content):
+      raise ValueError("Original file is larger than patched file.")
+    diff_start = -1
+    diff_end = -1
+    for i in range(len(patched_content)):
+      if i >= len(orig_content) or not orig_content[i] == patched_content[i]:
+        if diff_start < 0:
+          diff_start = i
+        diff_end = i
+      if diff_end >= 0 and (i - diff_end >= 5 or i == len(patched_content) - 1):
+        p.add_record(diff_start, patched_content[diff_start:diff_end+1])
+        diff_start = -1
+        diff_end = -1
+
     return p
 
 class Record:
