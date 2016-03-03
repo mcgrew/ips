@@ -13,8 +13,8 @@ def apply_ips(file_content, patch_content):
 class Patch:
   records = [] 
   def __init__(self, ips_content=None):
-    if ips_content and ips_content[:5] == b'PATCH':
-      # trim 'PATCH' from the beginning and 'EOL' from the end.
+    if ips_content and ips_content[:5] == b'PATCH' and ips_content[-3:] == b'EOF':
+      # trim 'PATCH' from the beginning and 'EOF' from the end.
       ips_ptr = 0
       ips_content = ips_content[5:-3]
       # parse the patches
@@ -43,7 +43,7 @@ class Patch:
 
   def encode(self):
     encoded =  b''.join([r.encode() for r in self.records])
-    return b''.join((b'PATCH', encoded, b'EOL'))
+    return b''.join((b'PATCH', encoded, b'EOF'))
 
   def add_record(self, address, content):
     self.records.append(Record(address, content))
