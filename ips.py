@@ -112,13 +112,13 @@ def main():
     file_content, file_name = file2_content, args.file2
   elif file2_content[:5] == b'PATCH':
     patch_content, patch_name = file2_content, args.file2
-    file_name = args.file1
+    file_content, file_name = file1_content, args.file1
   
   if patch_content:
-    out = apply_ips(file1_content, patch_content)
+    out = apply_ips(file_content, patch_content)
     if not args.output:
       args.output = patch_name[patch_name.rindex('.')] + \
-          file1_name[file1_name.rindex('.'):]
+          file_name[file_name.rindex('.'):]
   else:
     out = create_ips(file1_content, file2_content)
     if not args.output:
