@@ -28,7 +28,7 @@ class Patch:
               ips_ptr)
           ips_ptr += record_size
         else: #run length encoded
-          record_size = struct.unpack_from("B", ips_content, ips_ptr)
+          record_size = struct.unpack_from(">H", ips_content, ips_ptr)[0]
           ips_ptr += 2
           record_content = struct.unpack_from("B", ips_content, ips_ptr) \
               * record_size
