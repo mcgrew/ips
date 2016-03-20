@@ -117,13 +117,19 @@ def main():
   if patch_content:
     out = apply_ips(file_content, patch_content)
     if not args.output:
-      args.output = patch_name[patch_name.rindex('.')] + \
-          file_name[file_name.rindex('.'):]
+      try:
+        patch_name_without_ext = patch_name[:patch_name.rindex('.')]
+      except ValueError:
+        patch_name_without_ext = patch_name
+      try:
+        ext = file_name[file_name.rindex('.'):]
+      except ValueError:
+        ext = '.patched'
+      args.output = patch_name_without_ext + ext
   else:
     out = create_ips(file1_content, file2_content)
     if not args.output:
       args.output = args.file2 + '.ips'
-
   
   outfile = open(args.output, 'wb')
   outfile.write(out)
@@ -132,5 +138,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-
