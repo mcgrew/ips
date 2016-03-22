@@ -28,7 +28,7 @@ class Patch:
               ips_ptr)
           ips_ptr += record_size
         else: #run length encoded
-          record_size = struct.unpack_from("B", ips_content, ips_ptr)
+          record_size = struct.unpack_from(">H", ips_content, ips_ptr)[0]
           ips_ptr += 2
           record_content = struct.unpack_from("B", ips_content, ips_ptr) \
               * record_size
@@ -112,18 +112,24 @@ def main():
     file_content, file_name = file2_content, args.file2
   elif file2_content[:5] == b'PATCH':
     patch_content, patch_name = file2_content, args.file2
-    file_name = args.file1
+    file_content, file_name = file1_content, args.file1
   
   if patch_content:
-    out = apply_ips(file1_content, patch_content)
+    out = apply_ips(file_content, patch_content)
     if not args.output:
-      args.output = patch_name[patch_name.rindex('.')] + \
-          file1_name[file1_name.rindex('.'):]
+      try:
+        patch_name_without_ext = patch_name[:patch_name.rindex('.')]
+      except ValueError:
+        patch_name_without_ext = patch_name
+      try:
+        ext = file_name[file_name.rindex('.'):]
+      except ValueError:
+        ext = '.patched'
+      args.output = patch_name_without_ext + ext
   else:
     out = create_ips(file1_content, file2_content)
     if not args.output:
       args.output = args.file2 + '.ips'
-
   
   outfile = open(args.output, 'wb')
   outfile.write(out)
@@ -132,5 +138,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-
