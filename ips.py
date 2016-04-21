@@ -48,6 +48,12 @@ class Patch:
   def add_record(self, address, content):
     self.records.append(Record(address, content))
 
+  def clear(self):
+    self.records = []
+
+  def combine(self, patch):
+    self.records = self.records + patch.records
+
   @staticmethod
   def create(orig_content, patched_content):
     p = Patch()
