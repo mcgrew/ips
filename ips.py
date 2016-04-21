@@ -86,7 +86,7 @@ class Record:
 
   def encode(self):
     return struct.pack('>BHH' + 'B' * self.size(), self.address >> 16, 
-        self.address & 0xff, self.size(), *[int(b) for b in self.content])
+        self.address & 0xffff, self.size(), *[int(b) for b in self.content])
     
 
 def main():
