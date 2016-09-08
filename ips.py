@@ -11,8 +11,8 @@ def apply_ips(file_content, patch_content):
   return patch.apply(file_content)
 
 class Patch:
-  records = [] 
   def __init__(self, ips_content=None):
+    self.records = []
     if ips_content and ips_content[:5] == b'PATCH' and ips_content[-3:] == b'EOF':
       # trim 'PATCH' from the beginning and 'EOF' from the end.
       ips_ptr = 0
@@ -27,26 +27,41 @@ class Patch:
           record_content = struct.unpack_from("B" * record_size, ips_content, 
               ips_ptr)
           ips_ptr += record_size
+          self.records.append(Record(record_addr, record_content))
         else: #run length encoded
           record_size = struct.unpack_from(">H", ips_content, ips_ptr)[0]
           ips_ptr += 2
-          record_content = struct.unpack_from("B", ips_content, ips_ptr) \
-              * record_size
+          record_content = struct.unpack_from("B", ips_content, ips_ptr)[0]
           ips_ptr += 1
-        self.records.append(Record(record_addr, record_content))
+          self.records.append(Record(record_addr, record_content, record_size))
     
   def apply(self, orig_content):
-    orig_content = bytearray(orig_content)
+    if not isinstance(orig_content, bytearray):
+      orig_content = bytearray(orig_content)
     for record in self.records:
-      orig_content[record.address:record.address+record.size()] = record.content
+      record.apply(orig_content)
     return orig_content
 
   def encode(self):
     encoded =  b''.join([r.encode() for r in self.records])
     return b''.join((b'PATCH', encoded, b'EOF'))
 
-  def add_record(self, address, content):
-    self.records.append(Record(address, content))
+  def add_record(self, address, content, rle_size=None):
+    for r in self.records:
+      if r.address == address:
+        r.set_content(content)
+        return
+    self.records.append(Record(address, content, rle_size))
+
+  def add_records(self, patchdict):
+    for addr,value in patchdict.items():
+      self.add_record(addr, value)
+
+  def clear(self):
+    self.records = []
+
+  def combine(self, patch):
+    self.records = self.records + patch.records
 
   @staticmethod
   def create(orig_content, patched_content):
@@ -68,27 +83,47 @@ class Patch:
     return p
 
 class Record:
-  def __init__(self, address, content=None):
+  def __init__(self, address, content=None, rle_size=None):
     self.address = address 
-    self.content = content
+    self.rle_size = rle_size #RLE records only
+    if content is not None:
+      self.set_content(content)
 
   def set_addr(self, addr):
     self.address = addr
 
   def set_content(self, content):
-    self.content = content
+    try:
+      if len(content) > 1 and self.rle_size:
+        raise ValueError("RLE records may only contain one byte of content, "
+          "%d bytes provided" % len(content))
+      self.content = bytearray(content)
+    except TypeError:
+      self.content = bytearray((content,))
 
   def size(self):
+    if self.rle_size:
+      return self.rle_size
     if self.content:
       return len(self.content)
     else:
       return 0
 
   def encode(self):
+    if self.rle_size: #RLE record
+      return struct.pack('>BHHHB', self.address >> 16, self.address & 0xffff, 0,
+        self.rle_size, int(self.content[0]))
     return struct.pack('>BHH' + 'B' * self.size(), self.address >> 16, 
-        self.address & 0xff, self.size(), *[int(b) for b in self.content])
-    
+        self.address & 0xffff, self.size(), *[int(b) for b in self.content])
 
+  def apply(self, orig_content):
+    size = self.size()
+    if self.rle_size:
+      orig_content[self.address:self.address+size] = self.content * size
+    elif size:
+      orig_content[self.address:self.address+size] = self.content
+    
+ 
 def main():
   parser = argparse.ArgumentParser(prog="ips",
       description="A utility for creating and appying IPS patches")
